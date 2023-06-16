@@ -62,7 +62,6 @@ typeof(millis()) last_blink = 0;
 typeof(millis()) last_status = 30000;  // nonzero to defer our first status until triggered
 unsigned long inPackets = 0;
 unsigned long outPackets = 0;
-bool cold_boot = true;  // treat power-on differently
 
 
 WiFiClient wifi;
@@ -173,7 +172,7 @@ void mqtt_receive_callback(char* topic, byte* payload, unsigned int length) {
  */
 bool check_wifi()
 {
-  if (cold_boot || WiFi.status() != WL_CONNECTED) {
+  if (WiFi.status() != WL_CONNECTED) {
     if ((millis() - last_wifi_check) >= WIFI_RETRY_DELAY) {
       Serial.print("WiFi connecting");
       Serial.print("*");
