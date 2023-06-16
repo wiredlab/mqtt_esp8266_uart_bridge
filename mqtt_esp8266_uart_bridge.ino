@@ -59,7 +59,7 @@ bool in_blink = false;
 typeof(millis()) last_blink = 0;
 
 // status update housekeeping
-unsigned long last_status = 30000;  // nonzero to defer our first status until triggered
+typeof(millis()) last_status = 30000;  // nonzero to defer our first status until triggered
 unsigned long inPackets = 0;
 unsigned long outPackets = 0;
 bool cold_boot = true;  // treat power-on differently
@@ -70,7 +70,7 @@ ESP8266WiFiMulti wifiMulti;
 WiFiUDP udp;
 NTPClient ntpClient(udp, NTP_SERVER, 0, NTP_UPDATE_INTERVAL);
 PubSubClient mqtt(wifi);
-unsigned long last_wifi_check = 0;
+typeof(millis()) last_wifi_check = 0;
 unsigned long last_mqtt_check = 0;
 
 
@@ -142,26 +142,28 @@ String hexToStr(uint8_t* arr, int n)
 }
 
 
+
 /*
- * Called whenever a payload is received from a subscribed MQTT topic
+ * Called whenever a payload is received from a subscribed MQTT topic.
  */
 void mqtt_receive_callback(char* topic, byte* payload, unsigned int length) {
   char buffer[256];
   buffer[0] = 0;
   int len = 0;
 
-  // Directly pass through the bytes
-  // TODO: use COBS to denote payload frame
-  Serial.write(payload, length);
+  if (strcmp(topic, (MQTT_TOPIC_PREFIX + my_mac + MQTT_CONTROL_TOPIC).c_str()) == 0) {
+      // TODO: use this to change behavior
+  } else if (strcmp(topic, (MQTT_TOPIC_PREFIX + my_mac + MQTT_DOWNLINK_TOPIC).c_str()) == 0) {
+      // Directly pass through the bytes
+      // TODO: use COBS or other method to better denote payload frame
+      Serial.write(payload, length);
+  }
+
   inPackets++;
 
-  // this will effectively be a half-blink, forcing the LED to the
-  // requested state
+  // LED blinks once per payload
   nBlinks += 1;
-  //pub_status_mqtt("rx-callback");
 }
-
-
 
 
 
@@ -196,15 +198,14 @@ bool check_wifi()
 }
 
 
+
 /*
  * Check the MQTT connection state and attempt to reconnect.
- * If we do reconnect, then subscribe to MQTT_DOWNLINK_TOPIC and
- * make an announcement to MQTT_ANNOUNCE_TOPIC with the WiFi SSID and
- * local IP address.
+ * If we do reconnect, then subscribe to MQTT_CONTROL_TOPIC and
+ * MQTT_DOWNLINK_TOPIC and publish to MQTT_STATUS_TOPIC with status type and
+ * telemetry.
  */
-bool check_mqtt()
-{
-  if (mqtt.connected()) { return true; }
+bool check_mqtt() { if (mqtt.connected()) { return true; }
 
   // no point to continue if no network
   if (WiFi.status() != WL_CONNECTED) { return false; }
@@ -213,7 +214,7 @@ bool check_mqtt()
   Serial.print("MQTT reconnect...");
   // Attempt to connect
   int connect_status = mqtt.connect(my_mac.c_str(), MQTT_USER, MQTT_PASS,
-                   (MQTT_PREFIX_TOPIC + my_mac + MQTT_ANNOUNCE_TOPIC).c_str(),
+                   (MQTT_TOPIC_PREFIX + my_mac + MQTT_STATUS_TOPIC).c_str(),
                    2,  // willQoS
                    1,  // willRetain
                    "{\"state\":\"disconnected\"}");
@@ -221,8 +222,9 @@ bool check_mqtt()
     // let everyone know we are alive
     pub_status_mqtt("connected");
 
-    // ... and resubscribe to downlink topic
-    mqtt.subscribe((MQTT_PREFIX_TOPIC + my_mac + MQTT_DOWNLINK_TOPIC).c_str());
+    // ... and resubscribe to control and downlink topics
+    mqtt.subscribe((MQTT_TOPIC_PREFIX + my_mac + MQTT_CONTROL_TOPIC).c_str());
+    mqtt.subscribe((MQTT_TOPIC_PREFIX + my_mac + MQTT_DOWNLINK_TOPIC).c_str());
   } else {
     Serial.print("failed, rc=");
     Serial.println(mqtt.state());
@@ -257,7 +259,7 @@ bool pub_status_mqtt(const char *state)
   Serial.println(buf);
 
   if (mqtt.connected()) {
-    return mqtt.publish((MQTT_PREFIX_TOPIC + my_mac + MQTT_ANNOUNCE_TOPIC).c_str(),
+    return mqtt.publish((MQTT_TOPIC_PREFIX + my_mac + MQTT_STATUS_TOPIC).c_str(),
                         buf,
                         true);
   } else {
@@ -314,7 +316,7 @@ void setup() {
   mqtt.setServer(MQTT_SERVER, MQTT_PORT);
   mqtt.setCallback(mqtt_receive_callback);
   mqtt.setBufferSize(512);
-  topic = MQTT_PREFIX_TOPIC + my_mac + MQTT_UPLINK_TOPIC;
+  topic = MQTT_TOPIC_PREFIX + my_mac + MQTT_UPLINK_TOPIC;
 
   delay(1000);
 
@@ -353,7 +355,7 @@ void loop() {
 
   rxBuffer = serialRead();
   if (rxBuffer.length() > 0) {
-    mqtt.publish((MQTT_PREFIX_TOPIC + my_mac + MQTT_UPLINK_TOPIC).c_str(),
+    mqtt.publish((MQTT_TOPIC_PREFIX + my_mac + MQTT_UPLINK_TOPIC).c_str(),
                  (uint8_t *)rxBuffer.c_str(),
                  rxBuffer.length(),
                  false);
@@ -387,10 +389,10 @@ void loop() {
   if (now - last_status >= STATUS_INTERVAL) {
     pub_status_mqtt("status");
 
-    if (inPackets > 0) {
+    if (inPackets > 0 || outPackets > 0) {
+      // something happened, so things are ok?
       no_packet_intervals = NO_PACKETS_INTERVALS_ZOMBIE_RESTART;
     } else {
-      Serial.println("no packets :(");
       no_packet_intervals--;
 
       if (no_packet_intervals == 0) {
@@ -401,6 +403,7 @@ void loop() {
     }
 
     inPackets = 0;
+    outPackets = 0;
     last_status = millis();
   }
   /*

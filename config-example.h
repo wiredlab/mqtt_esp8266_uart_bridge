@@ -27,7 +27,7 @@ const unsigned long STATUS_INTERVAL = 300000;  // ms between status messages
 const int NO_PACKETS_INTERVALS_ZOMBIE_RESTART = 10;  // no-packet status intervals? --> restart to resurrect
 
 // MQTT settings
-const char *MQTT_PREFIX_TOPIC = "valpo/mqtt8266bridge/";
+const char *MQTT_TOPIC_PREFIX = "valpo/mqtt8266bridge/";
 const char *MQTT_ANNOUNCE_TOPIC = "/status";
 const char *MQTT_DOWNLINK_TOPIC = "/stdin";
 const char *MQTT_UPLINK_TOPIC = "/stdout";
