@@ -174,9 +174,8 @@ bool check_wifi()
 {
   if (WiFi.status() != WL_CONNECTED) {
     if ((millis() - last_wifi_check) >= WIFI_RETRY_DELAY) {
-      Serial.print("WiFi connecting");
-      Serial.print("*");
-
+      Serial.print("[INFO] WiFi connecting.");
+      
       int retries = 5;
       while (retries > 0 && wifiMulti.run() != WL_CONNECTED) {
         delay(500);
@@ -185,10 +184,10 @@ bool check_wifi()
       }
 
       if (retries == 0) {
-        String msg = "WiFi: failed, waiting for " + String(WIFI_RETRY_DELAY/1000) + " seconds before trying again";
+        String msg = "[INFO] WiFi: failed, waiting for " + String(WIFI_RETRY_DELAY/1000) + " seconds before trying again";
         Serial.println(msg);
       } else {
-        Serial.println(WiFi.localIP().toString());
+        Serial.println("[INFO] " + WiFi.localIP().toString());
       }
       last_wifi_check = millis();
     } // retry delay
@@ -210,7 +209,7 @@ bool check_mqtt() { if (mqtt.connected()) { return true; }
   if (WiFi.status() != WL_CONNECTED) { return false; }
 
   // reconnect
-  Serial.print("MQTT reconnect...");
+  Serial.print("[INFO] MQTT reconnect...");
   // Attempt to connect
   int connect_status = mqtt.connect(my_mac.c_str(), MQTT_USER, MQTT_PASS,
                    (MQTT_TOPIC_PREFIX + my_mac + MQTT_STATUS_TOPIC).c_str(),
@@ -255,7 +254,7 @@ bool pub_status_mqtt(const char *state)
   char buf[256];
   serializeJson(status_json, buf);
 
-  Serial.println(buf);
+  //Serial.println(buf);
 
   if (mqtt.connected()) {
     return mqtt.publish((MQTT_TOPIC_PREFIX + my_mac + MQTT_STATUS_TOPIC).c_str(),
@@ -277,8 +276,8 @@ bool pub_status_mqtt(const char *state)
  ***********************************************************/
 void setup() {
   Serial.begin(115200);
-  Serial.println();
   Serial.setTimeout(SERIAL_TIMEOUT);
+  Serial.println();
 
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, led_state);
@@ -294,12 +293,13 @@ void setup() {
 
   WiFi.macAddress(mac);
   my_mac = hexToStr(mac, 6);
-  String msg = "\nMAC: " + my_mac;
+  String msg = "[INFO] MAC: " + my_mac;
   Serial.println(msg);
 
   msg = "mqtt8266bridge-" + my_mac;
   WiFi.setHostname(msg.c_str());
 
+  Serial.print("[INFO] WiFi connecting.");
   int retries = 5;
   while (retries > 0 && wifiMulti.run() != WL_CONNECTED) {
     delay(500);
