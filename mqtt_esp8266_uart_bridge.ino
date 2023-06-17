@@ -187,7 +187,7 @@ bool check_wifi()
         String msg = "[INFO] WiFi: failed, waiting for " + String(WIFI_RETRY_DELAY/1000) + " seconds before trying again";
         Serial.println(msg);
       } else {
-        Serial.println("[INFO] " + WiFi.localIP().toString());
+        Serial.println(" " + WiFi.localIP().toString());
       }
       last_wifi_check = millis();
     } // retry delay
@@ -225,8 +225,8 @@ bool check_mqtt() { if (mqtt.connected()) { return true; }
     mqtt.subscribe((MQTT_TOPIC_PREFIX + my_mac + MQTT_DOWNLINK_TOPIC).c_str());
   } else {
     Serial.print("failed, rc=");
-    Serial.println(mqtt.state());
   }
+  Serial.println(mqtt.state());
   return mqtt.connected();
 }
 
@@ -283,11 +283,12 @@ bool pub_status_mqtt(const char *state)
 void setup() {
   Serial.begin(115200);
   Serial.setTimeout(SERIAL_TIMEOUT);
-  Serial.println();
 
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, led_state);
 
+  Serial.println();
+  Serial.println();
 
   /*
    * setup WiFi
@@ -305,14 +306,8 @@ void setup() {
   msg = "mqtt8266bridge-" + my_mac;
   WiFi.setHostname(msg.c_str());
 
-  Serial.print("[INFO] WiFi connecting.");
-  int retries = 5;
-  while (retries > 0 && wifiMulti.run() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-    retries--;
-  }
-  Serial.println(wifi.localIP().toString());
+  // Connect to WiFi
+  check_wifi();
 
 
   /*
