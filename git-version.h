@@ -7,4 +7,4 @@
  *
  *  git describe --tags --always --dirty
  */
-#define GIT_VERSION "v0.1.5"
+#define GIT_VERSION "v0.1.6"

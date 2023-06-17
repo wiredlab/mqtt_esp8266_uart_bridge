@@ -69,7 +69,7 @@ ESP8266WiFiMulti wifiMulti;
 WiFiUDP udp;
 NTPClient ntpClient(udp, NTP_SERVER, 0, NTP_UPDATE_INTERVAL);
 PubSubClient mqtt(wifi);
-typeof(millis()) last_wifi_check = 0;
+typeof(millis()) last_wifi_check = -WIFI_RETRY_DELAY;
 unsigned long last_mqtt_check = 0;
 
 
@@ -146,9 +146,6 @@ String hexToStr(uint8_t* arr, int n)
  * Called whenever a payload is received from a subscribed MQTT topic.
  */
 void mqtt_receive_callback(char* topic, byte* payload, unsigned int length) {
-  char buffer[256];
-  buffer[0] = 0;
-  int len = 0;
 
   if (strcmp(topic, (MQTT_TOPIC_PREFIX + my_mac + MQTT_CONTROL_TOPIC).c_str()) == 0) {
       // TODO: use this to change behavior
@@ -176,7 +173,7 @@ bool check_wifi()
     if ((millis() - last_wifi_check) >= WIFI_RETRY_DELAY) {
       Serial.print("[INFO] WiFi connecting.");
 
-      int retries = 5;
+      int retries = 10;
       while (retries > 0 && wifiMulti.run() != WL_CONNECTED) {
         delay(500);
         Serial.print(".");
