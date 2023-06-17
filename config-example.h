@@ -41,5 +41,3 @@ const char *MQTT_SERVER = "CHANGE_ME";
 const int MQTT_PORT = 1883;
 const char *MQTT_USER = "CHANGE_ME";
 const char *MQTT_PASS = "CHANGE_ME";
-
-

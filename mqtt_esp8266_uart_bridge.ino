@@ -237,8 +237,10 @@ bool check_mqtt() { if (mqtt.connected()) { return true; }
  */
 bool pub_status_mqtt(const char *state)
 {
+  bool retval = false;
+
   // JSON formatted payload
-  StaticJsonDocument<256> status_json;
+  StaticJsonDocument<512> status_json;
   status_json["state"] = state;
   status_json["time"] = getIsoTime();
   status_json["uptime_ms"] = millis();
@@ -247,22 +249,26 @@ bool pub_status_mqtt(const char *state)
   status_json["ssid"] = WiFi.SSID();
   status_json["rssi"] = WiFi.RSSI();
   status_json["ip"] = WiFi.localIP().toString();
-  //status_json["hostname"] = WiFi.getHostname();
+  status_json["hostname"] = WiFi.getHostname();
   status_json["version"] = GIT_VERSION;
   status_json["heap_free"] = ESP.getFreeHeap();
 
-  char buf[256];
-  serializeJson(status_json, buf);
+  uint8_t buf[512];
+  size_t len = serializeJson(status_json, buf);
 
   //Serial.println(buf);
 
   if (mqtt.connected()) {
-    return mqtt.publish((MQTT_TOPIC_PREFIX + my_mac + MQTT_STATUS_TOPIC).c_str(),
-                        buf,
-                        true);
-  } else {
-    return false;
+    retval = mqtt.publish(
+      (MQTT_TOPIC_PREFIX + my_mac + MQTT_STATUS_TOPIC).c_str(),
+      buf,
+      len,
+      true);
   }
+
+  if (retval) { nBlinks++; }
+
+  return retval;
 }
 
 
