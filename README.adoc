@@ -1,8 +1,22 @@
 = mqtt_esp8266_uart_bridge
 
+Main repository at: https://github.com/wiredlab/mqtt_esp8266_uart_bridge
+
 Bidirectional bridge between a UART TX/RX port and MQTT topics.
 
 Target is the ESP-01s board using the ESP8266.
+
+== Features
+
+* Bytes published to `.../stdin` are sent out of the device UART's TX pin.
+
+* Bytes received on the device UART's RX pin are published to `.../stdout`.
+
+* Device periodically publishes telemetry to `.../status`.
+
+* Device subscribes to `.../control` for commands.
+
+
 
 
 == MQTT topics
@@ -31,7 +45,7 @@ The device uses the following subtopics for various purposes:
 
 == TODO
 
-* There needs to be a better way to extract payload frames from the UART RX receive port.  Presently it ignores `\r` and uses `\n` as a payload terminator, not passing on the `\n` to MQTT.
+* There needs to be a better way to extract payload frames from the UART RX receive port.  Presently it ignores `\r`, uses `\n` as a payload terminator (not passing on the `\n` to MQTT), and publishes after a timeout if no `\n` has been seen yet.
 
 ** https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing[Consistent Overhead Byte Stuffing^] is a candidate.
 
